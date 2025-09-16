@@ -1,6 +1,10 @@
 from flask import Flask, request, jsonify
-
 app = Flask(__name__)
+
+@app.route("/health", methods=["GET"])
+def health_check():
+    return "OK", 200
+
 
 @app.route("/kakao", methods=["POST"])
 def kakao_webhook():
@@ -34,4 +38,4 @@ def kakao_webhook():
 
 if __name__ == "__main__":
     # 로컬 테스트 시 포트 5000에서 실행
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000) 
