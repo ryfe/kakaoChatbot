@@ -135,7 +135,7 @@ def kakao_webhook():
     try:
         # 요청 JSON 안전 파싱
         body = request.get_json(silent=True) or {}
-        utter = (body.get("userRequest", {}) or {}).get("name", "")
+        utter = (body.get("userRequest", {}) or {}).get("block",{}).get("name", "")
         user_msg = utter.strip() if isinstance(utter, str) else str(utter)
 
         # 데이터가 아직 로드되지 않았다면 안내
