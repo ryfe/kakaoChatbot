@@ -99,18 +99,12 @@ def parse_request_count(utterance: str) -> int:
     return max(1, min(count, 30))
 
 def pick_random_words(count: int) -> List[Tuple[str, str]]:
-    """
-    통합 JLPT 단어 풀에서 랜덤으로 count개 선택.
-    - 중복 없이 샘플링, 부족 시 반복(거의 발생하지 않음)
-    """
     if not JLPT_WORDS:
         return []
     if count >= len(JLPT_WORDS):
-        # 요청 수가 총량보다 크면 섞어서 앞부분 잘라 반환
         shuffled = JLPT_WORDS[:]
         random.shuffle(shuffled)
         return shuffled[:count]
-    # 중복 없이 랜덤 샘플링
     return random.sample(JLPT_WORDS, count)
 
 def format_pairs_as_text(pairs: List[Tuple[str, str]]) -> str:
@@ -141,7 +135,7 @@ def kakao_webhook():
     try:
         # 요청 JSON 안전 파싱
         body = request.get_json(silent=True) or {}
-        utter = (body.get("userRequest", {}) or {}).get("utterance", "")
+        utter = (body.get("userRequest", {}) or {}).get("name", "")
         user_msg = utter.strip() if isinstance(utter, str) else str(utter)
 
         # 데이터가 아직 로드되지 않았다면 안내
@@ -158,8 +152,8 @@ def kakao_webhook():
 
         # 키워드 판별: "한국어 단어"면 단어 생성 로직 실행
         if "한국어 단어" in user_msg:
-            count = parse_request_count(user_msg)   # 개수만 사용(주제 무시)
-            pairs = pick_random_words(count)        # 랜덤 추출
+            count = parse_request_count(user_msg)
+            pairs = pick_random_words(count)
             reply_text = format_pairs_as_text(pairs)
 
             return jsonify({
