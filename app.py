@@ -22,6 +22,7 @@ from flask import Flask, request, jsonify
 
 # Flask 애플리케이션 인스턴스(WSGI 진입점)
 app = Flask(__name__)
+app.config['JSON_AS_ASCII'] = False
 
 # 통합 JSON 경로 (기본: 프로젝트 루트에 위치)
 JLPT_JSON_PATH = os.getenv("JLPT_JSON_PATH", "./words_ja_ko_JLPT.json")
@@ -196,6 +197,65 @@ def build_carousel_outputs(pairs: List[Tuple[str, str]]):
         })
     return outputs
 
+def build_peritem_carousel_outputs(pairs: List[Tuple[str, str]]):
+    """
+    각 단어를 basicCard 1장으로 만들어 carousel(가로 스크롤)로 반환.
+    - 한 carousel 당 10장 권장 → 10장 단위로 여러 carousel로 분할
+    - title = 한국어, description = 일본어
+    - buttons: 발음 듣기 / 예문 보기
+    """
+    outputs = []
+    CHUNK = 10
+    for i in range(0, len(pairs), CHUNK):
+        items = []
+        for ko, ja in pairs[i:i+CHUNK]:
+            items.append({
+                "title": ko,
+                "description": ja,
+                "buttons": [
+                    {"action": "message", "label": "🔊 발음 듣기", "messageText": f"발음 {ja}"},
+                    {"action": "message", "label": "📝 예문 보기", "messageText": f"예문 {ko}|{ja}"}
+                ]
+            })
+        outputs.append({
+            "carousel": {
+                "type": "basicCard",
+                "items": items
+            }
+        })
+    return outputs
+
+def build_simplespeech(text: str):
+    """
+    발음만 들려주기: 요청된 텍스트(보통 일본어 단어)만 재생/표시.
+    simpleSpeech 미지원 채널 대비 simpleText도 함께 내려줌.
+    """
+    return {
+        "version": "2.0",
+        "template": {
+            "outputs": [
+                {"simpleText": {"text": f"{text}"}},
+                {"simpleSpeech": {"simpleSpeech": {"value": text, "lang": "ja"}}}
+            ]
+        }
+    }
+
+def build_example_output(ko: str, ja: str):
+    """
+    간단 예문 카드 생성(데모용 템플릿).
+    """
+    ja_sent = f"「{ja}」が好きです。"
+    ko_sent = f"나는 ‘{ko}’를 좋아해요."
+    txt = f"{ja_sent}\n{ko_sent}"
+    return {
+        "version": "2.0",
+        "template": {
+            "outputs": [
+                {"basicCard": {"title": f"예문: {ko} — {ja}", "description": txt}}
+            ]
+        }
+    }
+
 @app.route("/kakao", methods=["POST"])
 def kakao_webhook():
     """
@@ -209,6 +269,22 @@ def kakao_webhook():
         body = request.get_json(silent=True) or {}
         utter = (body.get("userRequest", {}) or {}).get("utterance", "")
         user_msg = utter.strip() if isinstance(utter, str) else str(utter)
+
+        # 빠른 액션 처리: "발음 ..." / "예문 ..."
+        if user_msg.startswith("발음 "):
+            ja_text = user_msg[3:].strip()
+            return jsonify(build_simplespeech(ja_text)), 200
+
+        if user_msg.startswith("예문 "):
+            rest = user_msg[3:].strip()
+            ko, ja = None, None
+            if "|" in rest:
+                ko, ja = [s.strip() for s in rest.split("|", 1)]
+            else:
+                # 한 쪽만 온 경우: 동일 텍스트로 폴백
+                ko = rest
+                ja = rest
+            return jsonify(build_example_output(ko, ja)), 200
 
         # 데이터가 아직 로드되지 않았다면 안내
         if not JLPT_WORDS:
@@ -226,7 +302,7 @@ def kakao_webhook():
         if ("한국어 단어" in user_msg) or ("単語" in user_msg):
             count = parse_request_count(user_msg)
             pairs = pick_random_words(count)
-            outputs = build_basiccard_outputs(pairs)
+            outputs = build_peritem_carousel_outputs(pairs)
 
             return jsonify({
                 "version": "2.0",
