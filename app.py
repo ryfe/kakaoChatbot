@@ -147,22 +147,30 @@ def build_listcard_outputs(pairs: List[Tuple[str, str]]):
 
 def build_carousel_outputs(pairs: List[Tuple[str, str]]):
     """
-    Kakao carousel + basicCard 포맷으로 렌더링(가로 카드, 좌우 스크롤).
-    - carousel 한 개당 items 최대 10개 권장 → 10개 단위로 여러 carousel 생성
-    - 각 카드: title=한국어, description=일본어
+    Kakao carousel + basicCard 포맷(가로 카드, 좌우 스크롤).
+    - 5개 단위로 묶어 한 장의 basicCard로 렌더링 → (5,5, ...) 형태로 보임
+    - 각 basicCard는 description에 5줄(한국어 — 일본어)을 넣고,
+      헤더 용도로 title에 페이지 표기(예: 한국어 — 일본어 (1/2))를 넣는다.
     """
     outputs = []
-    CHUNK = 10
-    for i in range(0, len(pairs), CHUNK):
+    CHUNK = 5
+    cards = []
+    total_pages = (len(pairs) + CHUNK - 1) // CHUNK if pairs else 1
+    for page, i in enumerate(range(0, len(pairs), CHUNK), start=1):
         chunk = pairs[i:i+CHUNK]
-        items = [{
-            "title": ko,
-            "description": ja
-        } for ko, ja in chunk]
+        # 카드 본문(5줄): "한국어 — 일본어" 형식으로 합침
+        desc_lines = [f"{ko} — {ja}" for ko, ja in chunk]
+        description = "\n".join(desc_lines)
+        cards.append({
+            "title": f"한국어 — 일본어 ({page}/{total_pages})",
+            "description": description
+        })
+    # 한 번에 하나의 carousel로 보냄(카카오 권장: items 10개 이하)
+    if cards:
         outputs.append({
             "carousel": {
                 "type": "basicCard",
-                "items": items
+                "items": cards
             }
         })
     return outputs
