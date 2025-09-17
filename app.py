@@ -126,18 +126,42 @@ def format_pairs_as_text(pairs: List[Tuple[str, str]]) -> str:
 
 def build_listcard_outputs(pairs: List[Tuple[str, str]]):
     """
-    Kakao listCard 포맷으로 렌더링.
-    - listCard는 items를 최대 5개까지만 지원하므로, 5개 단위로 여러 개의 listCard를 생성해 반환한다.
+    Kakao listCard 포맷으로 렌더링(세로 카드).
+    - listCard는 items를 최대 5개까지만 지원하므로, 5개 단위로 여러 개의 listCard를 생성.
     - 각 항목: title=한국어, description=일본어
+    - 헤더에 페이지 표기 (예: 한국어 — 일본어 (1/3))
     """
     outputs = []
-    CHUNK = 5  # Kakao listCard items per card limit
-    for i in range(0, len(pairs), CHUNK):
+    CHUNK = 5
+    total_pages = (len(pairs) + CHUNK - 1) // CHUNK if pairs else 1
+    for page, i in enumerate(range(0, len(pairs), CHUNK), start=1):
         chunk = pairs[i:i+CHUNK]
         items = [{"title": ko, "description": ja} for ko, ja in chunk]
         outputs.append({
             "listCard": {
-                "header": {"title": "한국어 — 일본어"},
+                "header": {"title": f"한국어 — 일본어 ({page}/{total_pages})"},
+                "items": items
+            }
+        })
+    return outputs
+
+def build_carousel_outputs(pairs: List[Tuple[str, str]]):
+    """
+    Kakao carousel + basicCard 포맷으로 렌더링(가로 카드, 좌우 스크롤).
+    - carousel 한 개당 items 최대 10개 권장 → 10개 단위로 여러 carousel 생성
+    - 각 카드: title=한국어, description=일본어
+    """
+    outputs = []
+    CHUNK = 10
+    for i in range(0, len(pairs), CHUNK):
+        chunk = pairs[i:i+CHUNK]
+        items = [{
+            "title": ko,
+            "description": ja
+        } for ko, ja in chunk]
+        outputs.append({
+            "carousel": {
+                "type": "basicCard",
                 "items": items
             }
         })
@@ -173,7 +197,7 @@ def kakao_webhook():
         if ("한국어 단어" in user_msg) or ("単語" in user_msg):
             count = parse_request_count(user_msg)
             pairs = pick_random_words(count)
-            outputs = build_listcard_outputs(pairs)
+            outputs = build_listcard_outputs(pairs) if len(pairs) <= 5 else build_carousel_outputs(pairs)
 
             return jsonify({
                 "version": "2.0",
