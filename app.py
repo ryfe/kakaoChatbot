@@ -93,7 +93,7 @@ def parse_request_count(utterance: str) -> int:
     예) '한국어 단어 15개', '한국어 단어 5개 여행' → 15 / 5
     """
     text = utterance.strip() if isinstance(utterance, str) else str(utterance)
-    m = re.search(r"(\d)", text)
+    m = re.search(r"(\d+)", text)
     count = int(m.group(1)) if m else 10
     # 과도 방지(가독성/메시지 길이 고려)
     return max(1, min(count, 30))
