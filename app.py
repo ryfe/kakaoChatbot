@@ -124,6 +124,25 @@ def format_pairs_as_text(pairs: List[Tuple[str, str]]) -> str:
         text = text[:3500] + "\n…(일부 생략)"
     return text
 
+def build_listcard_outputs(pairs: List[Tuple[str, str]]):
+    """
+    Kakao listCard 포맷으로 랜더링.
+    - title: 한국어
+    - description: 일본어
+    """
+    items = []
+    for ko, ja in pairs:
+        items.append({
+            "title": ko,
+            "description": ja
+        })
+    return [{
+        "listCard": {
+            "header": {"title": "한국어 — 일본어"},
+            "items": items[:10]  # 최대 10개만 표시
+        }
+    }]
+
 @app.route("/kakao", methods=["POST"])
 def kakao_webhook():
     """
@@ -154,12 +173,12 @@ def kakao_webhook():
         if "한국어 단어" or "単語"in user_msg:
             count = parse_request_count(user_msg)
             pairs = pick_random_words(count)
-            reply_text = format_pairs_as_text(pairs)
+            outputs = build_listcard_outputs(pairs)
 
             return jsonify({
                 "version": "2.0",
                 "template": {
-                    "outputs": [{"simpleText": {"text": reply_text}}],
+                    "outputs": outputs,
                     "quickReplies": [
                         {"label": "다시 생성", "action": "message", "messageText": f"한국어 단어 {count}개"},
                         {"label": "5개", "action": "message", "messageText": "한국어 단어 5개"},
