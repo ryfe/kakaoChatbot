@@ -145,6 +145,27 @@ def build_listcard_outputs(pairs: List[Tuple[str, str]]):
         })
     return outputs
 
+def build_basiccard_outputs(pairs: List[Tuple[str, str]]):
+    """
+    Kakao basicCard만 사용해 세로로 쌓아 출력.
+    - 5개 단위로 묶어 한 장의 basicCard(description에 줄바꿈으로 5줄 표시)
+    - 헤더는 title로 페이지 표기 (예: 한국어 — 일본어 (1/2))
+    """
+    outputs = []
+    CHUNK = 5
+    total_pages = (len(pairs) + CHUNK - 1) // CHUNK if pairs else 1
+    for page, i in enumerate(range(0, len(pairs), CHUNK), start=1):
+        chunk = pairs[i:i+CHUNK]
+        desc_lines = [f"{ko} — {ja}" for ko, ja in chunk]
+        description = "\n".join(desc_lines)
+        outputs.append({
+            "basicCard": {
+                "title": f"한국어 — 일본어 ({page}/{total_pages})",
+                "description": description
+            }
+        })
+    return outputs
+
 def build_carousel_outputs(pairs: List[Tuple[str, str]]):
     """
     Kakao carousel + basicCard 포맷(가로 카드, 좌우 스크롤).
@@ -205,7 +226,7 @@ def kakao_webhook():
         if ("한국어 단어" in user_msg) or ("単語" in user_msg):
             count = parse_request_count(user_msg)
             pairs = pick_random_words(count)
-            outputs = build_listcard_outputs(pairs) if len(pairs) <= 5 else build_carousel_outputs(pairs)
+            outputs = build_basiccard_outputs(pairs)
 
             return jsonify({
                 "version": "2.0",
