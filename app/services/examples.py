@@ -23,14 +23,14 @@ def fetch_examples_from_tatoeba(ja_query: str, want: int = 1) -> List[Tuple[str,
         r = requests.get(TATOEBA_API, params=params, timeout=timeout)
         r.raise_for_status()
         data = r.json()
-        results = (data.get("results") or {})
-        sentences = results.get("sentences") or []
+        sentences = data.get("results") or []
         out: List[Tuple[str, str, int]] = []
         for s in sentences:
             ja_text = s.get("text") or ""
             sid = s.get("id")
-            translations = s.get("translations") or {}
-            ko_list = translations.get("kor") or translations.get("ko") or []
+            # translations: list of lists → [[{"lang":"kor","text":"..."}], ...]
+            translations = s.get("translations") or []
+            ko_list = [t for group in translations for t in group if t.get("lang") == "kor"]
             ko_text = ko_list[0].get("text") if ko_list else None
             if ja_text and ko_text:
                 out.append((ja_text, ko_text, sid))
