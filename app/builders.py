@@ -33,8 +33,8 @@ def build_simplespeech(text: str) -> dict:
         "version": "2.0",
         "template": {
             "outputs": [
-                {"simpleText": {"text": f"{text}"}},
-                {"simpleSpeech": {"simpleSpeech": {"value": text, "lang": "ja"}}}
+                {"simpleText": {"text": text}},
+                {"simpleSpeech": {"value": text, "lang": "ja"}}
             ]
         }
     }
