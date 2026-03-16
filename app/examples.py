@@ -24,7 +24,7 @@ def _fetch(ja_query: str) -> tuple[str, str, int] | None:
         r = requests.get(_API, params=params,
                          timeout=current_app.config.get("HTTP_TIMEOUT", 4.0))
         r.raise_for_status()
-        sentences = (r.json().get("results") or {}).get("sentences") or []
+        sentences = r.json().get("results") or []
         for s in sentences:
             ja_text = s.get("text") or ""
             sid = s.get("id")
