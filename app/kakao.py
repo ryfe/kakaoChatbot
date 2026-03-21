@@ -168,7 +168,7 @@ def kakao_webhook():
                         "outputs": [{"simpleText": {"text": msg}}],
                         "quickReplies": [
                             {"label": "다음 문제", "action": "message", "messageText": "퀴즈"},
-                            {"label": "초급 퀴즈", "action": "message", "messageText": "초급 퀴즈"},
+                            {"label": "점수", "action": "message", "messageText": "내 점수"},
                             {"label": "단어 보기", "action": "message", "messageText": "한국어 단어 5개"}
                         ]
                     }
