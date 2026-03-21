@@ -2,25 +2,22 @@
 # 카카오 오픈빌더 라우트 + 응답 빌더
 
 from flask import Blueprint, request, jsonify, current_app
+from hangul_romanize import Transliter
+from hangul_romanize.rule import academic
 from . import lexicon
 from .lexicon import try_load_into_cache, parse_request_count, pick_random_words
 from .examples import build_example_output_from_api
+
+_transliter = Transliter(academic)
 
 bp = Blueprint("kakao", __name__)
 
 
 # ── 응답 빌더 ────────────────────────────────────────────────
 
-def _simplespeech(text: str) -> dict:
-    return {
-        "version": "2.0",
-        "template": {
-            "outputs": [
-                {"simpleText": {"text": text}},
-                {"simpleSpeech": {"simpleSpeech": {"value": text, "lang": "ja"}}}
-            ]
-        }
-    }
+def _pronunciation(ko: str, ja: str) -> dict:
+    roman = _transliter.translit(ko)
+    return _simple(f"{ko}\n[{roman}]\n{ja}")
 
 
 def _word_carousel(pairs: list) -> list:
@@ -29,10 +26,9 @@ def _word_carousel(pairs: list) -> list:
     for i in range(0, len(pairs), 10):
         items = [
             {
-                "title": ko,
+                "title": f"{ko} [{_transliter.translit(ko)}]",
                 "description": ja,
                 "buttons": [
-                    {"action": "message", "label": "🔊 발음 듣기", "messageText": f"발음 {ja}"},
                     {"action": "message", "label": "📝 예문 보기", "messageText": f"예문 {ko}|{ja}"}
                 ]
             }
@@ -71,7 +67,9 @@ def kakao_webhook():
 
         # 발음
         if user_msg.startswith("발음 "):
-            return jsonify(_simplespeech(user_msg[3:].strip())), 200
+            rest = user_msg[3:].strip()
+            ko, ja = (s.strip() for s in rest.split("|", 1)) if "|" in rest else (rest, rest)
+            return jsonify(_pronunciation(ko, ja)), 200
 
         # 예문
         if user_msg.startswith("예문 "):
@@ -88,7 +86,7 @@ def kakao_webhook():
             )), 200
 
         # 단어 생성
-        if "한국어 단어" in user_msg or "単語" in user_msg:
+        if "단어" in user_msg or "単語" in user_msg:
             count = parse_request_count(user_msg)
             pairs = pick_random_words(count)
             return jsonify({
