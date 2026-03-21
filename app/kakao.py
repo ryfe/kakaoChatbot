@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # 카카오 오픈빌더 라우트 + 응답 빌더
 
+import random
 from flask import Blueprint, request, jsonify, current_app
 from hangul_romanize import Transliter
 from hangul_romanize.rule import academic
@@ -100,6 +101,45 @@ def kakao_webhook():
                     ]
                 }
             }), 200
+
+        # 퀴즈 문제 출제
+        if user_msg in ("퀴즈", "다음 문제", "クイズ", "次の問題"):
+            pairs = pick_random_words(4)
+            correct_ko, correct_ja = pairs[0]
+            options = [ko for ko, _ in pairs]
+            random.shuffle(options)
+            quick_replies = [
+                {"label": ko, "action": "message",
+                 "messageText": f"퀴즈답 {correct_ja}|{correct_ko}|{ko}"}
+                for ko in options
+            ]
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [{"simpleText": {"text": f"「{correct_ja}」의 뜻은?"}}],
+                    "quickReplies": quick_replies
+                }
+            }), 200
+
+        # 퀴즈 정답 처리
+        if user_msg.startswith("퀴즈답 "):
+            parts = user_msg[4:].strip().split("|")
+            if len(parts) == 3:
+                ja, correct_ko, chosen_ko = parts
+                if chosen_ko == correct_ko:
+                    msg = f"✅ 정답!\n「{ja}」= {correct_ko}"
+                else:
+                    msg = f"❌ 오답\n「{ja}」의 뜻은 {correct_ko}"
+                return jsonify({
+                    "version": "2.0",
+                    "template": {
+                        "outputs": [{"simpleText": {"text": msg}}],
+                        "quickReplies": [
+                            {"label": "다음 문제", "action": "message", "messageText": "퀴즈"},
+                            {"label": "단어 보기", "action": "message", "messageText": "한국어 단어 5개"}
+                        ]
+                    }
+                }), 200
 
         # 기본 에코
         return jsonify(_simple(f"당신이 보낸 메시지: {user_msg}")), 200
