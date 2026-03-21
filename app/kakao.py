@@ -8,6 +8,7 @@ from hangul_romanize.rule import academic
 from . import lexicon
 from .lexicon import try_load_into_cache, parse_request_count, pick_random_words
 from .examples import build_example_output_from_api
+from .db import save_quiz_result, get_user_stats
 
 _transliter = Transliter(academic)
 
@@ -79,6 +80,7 @@ def kakao_webhook():
     try:
         body = request.get_json(silent=True) or {}
         user_msg = ((body.get("userRequest") or {}).get("utterance") or "").strip()
+        user_id  = ((body.get("userRequest") or {}).get("user") or {}).get("id", "unknown")
 
         # 발음
         if user_msg.startswith("발음 "):
@@ -139,12 +141,24 @@ def kakao_webhook():
                 }
             }), 200
 
+        # 내 점수
+        if user_msg in ("내 점수", "점수", "スコア"):
+            stats = get_user_stats(user_id)
+            if not stats or stats["total"] == 0:
+                msg = "아직 퀴즈 기록이 없습니다.\n「퀴즈」로 시작해보세요!"
+            else:
+                rate = int(stats["correct"] / stats["total"] * 100)
+                msg = f"📊 퀴즈 점수\n정답: {stats['correct']} / {stats['total']}문제\n정답률: {rate}%"
+            return jsonify(_simple(msg)), 200
+
         # 퀴즈 정답 처리
         if user_msg.startswith("퀴즈답 "):
             parts = user_msg[4:].strip().split("|")
             if len(parts) == 3:
                 ko, correct_ja, chosen_ja = parts
-                if chosen_ja == correct_ja:
+                is_correct = chosen_ja == correct_ja
+                save_quiz_result(user_id, is_correct, ko, correct_ja, "")
+                if is_correct:
                     msg = f"✅ 정답!\n「{ko}」= {correct_ja}"
                 else:
                     msg = f"❌ 오답\n「{ko}」의 일본어는 {correct_ja}"
