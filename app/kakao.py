@@ -106,17 +106,17 @@ def kakao_webhook():
         if user_msg in ("퀴즈", "다음 문제", "クイズ", "次の問題"):
             pairs = pick_random_words(4)
             correct_ko, correct_ja = pairs[0]
-            options = [ko for ko, _ in pairs]
+            options = [ja for _, ja in pairs]
             random.shuffle(options)
             quick_replies = [
-                {"label": ko, "action": "message",
-                 "messageText": f"퀴즈답 {correct_ja}|{correct_ko}|{ko}"}
-                for ko in options
+                {"label": ja, "action": "message",
+                 "messageText": f"퀴즈답 {correct_ko}|{correct_ja}|{ja}"}
+                for ja in options
             ]
             return jsonify({
                 "version": "2.0",
                 "template": {
-                    "outputs": [{"simpleText": {"text": f"「{correct_ja}」의 뜻은?"}}],
+                    "outputs": [{"simpleText": {"text": f"「{correct_ko}」의 일본어는?"}}],
                     "quickReplies": quick_replies
                 }
             }), 200
@@ -125,11 +125,11 @@ def kakao_webhook():
         if user_msg.startswith("퀴즈답 "):
             parts = user_msg[4:].strip().split("|")
             if len(parts) == 3:
-                ja, correct_ko, chosen_ko = parts
-                if chosen_ko == correct_ko:
-                    msg = f"✅ 정답!\n「{ja}」= {correct_ko}"
+                ko, correct_ja, chosen_ja = parts
+                if chosen_ja == correct_ja:
+                    msg = f"✅ 정답!\n「{ko}」= {correct_ja}"
                 else:
-                    msg = f"❌ 오답\n「{ja}」의 뜻은 {correct_ko}"
+                    msg = f"❌ 오답\n「{ko}」의 일본어는 {correct_ja}"
                 return jsonify({
                     "version": "2.0",
                     "template": {
