@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # 카카오 오픈빌더 라우트 + 응답 빌더
 
-import random
+import random, re
 from flask import Blueprint, request, jsonify, current_app
 from hangul_romanize import Transliter
 from hangul_romanize.rule import academic
@@ -12,6 +12,12 @@ from .examples import build_example_output_from_api
 _transliter = Transliter(academic)
 
 bp = Blueprint("kakao", __name__)
+
+LEVEL_MAP = {
+    "초급": "초급", "쉬운": "초급", "beginner": "초급",
+    "중급": "중급", "보통": "중급", "intermediate": "중급",
+    "고급": "고급", "어려운": "고급", "advanced": "고급",
+}
 
 
 # ── 응답 빌더 ────────────────────────────────────────────────
@@ -33,7 +39,7 @@ def _word_carousel(pairs: list) -> list:
                     {"action": "message", "label": "📝 예문 보기", "messageText": f"예문 {ko}|{ja}"}
                 ]
             }
-            for ko, ja in pairs[i:i + 10]
+            for ko, ja, *_ in pairs[i:i + 10]
         ]
         outputs.append({"carousel": {"type": "basicCard", "items": items}})
     return outputs
@@ -41,6 +47,14 @@ def _word_carousel(pairs: list) -> list:
 
 def _simple(text: str) -> dict:
     return {"version": "2.0", "template": {"outputs": [{"simpleText": {"text": text}}]}}
+
+
+def _parse_level(msg: str):
+    """메시지에서 레벨 키워드 추출 → (level or None, 원본 메시지)"""
+    for key, lv in LEVEL_MAP.items():
+        if key in msg:
+            return lv
+    return None
 
 
 # ── 라우트 ───────────────────────────────────────────────────
@@ -86,27 +100,31 @@ def kakao_webhook():
                 "관리자: /reload 로 재로드 가능"
             )), 200
 
-        # 단어 생성
+        # 단어 생성 (레벨 포함/미포함)
         if "단어" in user_msg or "単語" in user_msg:
             count = parse_request_count(user_msg)
-            pairs = pick_random_words(count)
+            level = _parse_level(user_msg)
+            pairs = pick_random_words(count, level)
+            level_label = f"{level} " if level else ""
             return jsonify({
                 "version": "2.0",
                 "template": {
                     "outputs": _word_carousel(pairs),
                     "quickReplies": [
-                        {"label": "다시 생성", "action": "message", "messageText": f"한국어 단어 {count}개"},
-                        {"label": "5개",    "action": "message", "messageText": "한국어 단어 5개"},
-                        {"label": "10개",   "action": "message", "messageText": "한국어 단어 10개"},
+                        {"label": "다시 생성", "action": "message", "messageText": f"{level_label}단어 {count}개"},
+                        {"label": "초급",     "action": "message", "messageText": f"초급 단어 {count}개"},
+                        {"label": "중급",     "action": "message", "messageText": f"중급 단어 {count}개"},
+                        {"label": "고급",     "action": "message", "messageText": f"고급 단어 {count}개"},
                     ]
                 }
             }), 200
 
         # 퀴즈 문제 출제
-        if user_msg in ("퀴즈", "다음 문제", "クイズ", "次の問題"):
-            pairs = pick_random_words(4)
-            correct_ko, correct_ja = pairs[0]
-            options = [ja for _, ja in pairs]
+        if user_msg in ("퀴즈", "다음 문제", "クイズ", "次の問題") or re.match(r"^(초급|중급|고급) 퀴즈$", user_msg):
+            level = _parse_level(user_msg)
+            pairs = pick_random_words(4, level)
+            correct_ko, correct_ja, *_ = pairs[0]
+            options = [p[1] for p in pairs]
             random.shuffle(options)
             quick_replies = [
                 {"label": ja, "action": "message",
@@ -136,6 +154,7 @@ def kakao_webhook():
                         "outputs": [{"simpleText": {"text": msg}}],
                         "quickReplies": [
                             {"label": "다음 문제", "action": "message", "messageText": "퀴즈"},
+                            {"label": "초급 퀴즈", "action": "message", "messageText": "초급 퀴즈"},
                             {"label": "단어 보기", "action": "message", "messageText": "한국어 단어 5개"}
                         ]
                     }
