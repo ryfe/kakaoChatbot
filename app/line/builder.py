@@ -38,13 +38,22 @@ def word_list(pairs: list, level: str | None, count: int) -> list[dict]:
     for i, (ko, ja, *_) in enumerate(pairs):
         if i > 0:
             rows.append({"type": "separator", "margin": "sm"})
+        roman = romanize(ko)
         rows.append({
             "type": "box",
             "layout": "horizontal",
             "margin": "sm",
             "contents": [
-                {"type": "text", "text": ko, "flex": 3, "size": "md", "color": "#333333", "weight": "bold"},
-                {"type": "text", "text": ja, "flex": 2, "size": "md", "color": "#666666", "align": "end"},
+                {
+                    "type": "box",
+                    "layout": "vertical",
+                    "flex": 3,
+                    "contents": [
+                        {"type": "text", "text": ko, "size": "md", "color": "#333333", "weight": "bold"},
+                        {"type": "text", "text": roman, "size": "xs", "color": "#999999"},
+                    ]
+                },
+                {"type": "text", "text": ja, "flex": 2, "size": "md", "color": "#666666", "align": "end", "gravity": "center"},
             ]
         })
 
