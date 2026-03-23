@@ -18,13 +18,11 @@ _LINE_REPLY = "https://api.line.me/v2/bot/message/reply"
 
 
 def _verify(body_bytes: bytes, signature: str, secret: str) -> bool:
-    """LINE 서명 검증"""
     digest = hmac.new(secret.encode(), body_bytes, hashlib.sha256).digest()
     return base64.b64encode(digest).decode() == signature
 
 
 def _reply(reply_token: str, messages: list) -> None:
-    """LINE reply API 호출"""
     token = current_app.config.get("LINE_CHANNEL_ACCESS_TOKEN", "")
     if not token:
         current_app.logger.warning("[line] LINE_CHANNEL_ACCESS_TOKEN 미설정")
@@ -39,7 +37,6 @@ def _reply(reply_token: str, messages: list) -> None:
 
 @bp.route("/line", methods=["POST"])
 def line_webhook():
-    # ── 서명 검증 ────────────────────────────────────────────
     secret = current_app.config.get("LINE_CHANNEL_SECRET", "")
     if secret:
         sig = request.headers.get("X-Line-Signature", "")
@@ -66,45 +63,45 @@ def line_webhook():
 
 
 def _handle(msg: str, uid: str) -> list[dict]:
-    """메시지 처리 → LINE messages 리스트"""
-    # 발음
-    if msg.startswith("발음 "):
-        rest = msg[3:].strip()
+    # 발음 / 発音
+    if msg.startswith("발음 ") or msg.startswith("発音 "):
+        rest = re.sub(r"^(발음|発音)\s+", "", msg)
         ko, ja = (s.strip() for s in rest.split("|", 1)) if "|" in rest else (rest, rest)
         return [build.pronunciation(ko, ja)]
 
-    # 예문
-    if msg.startswith("예문 "):
-        rest = msg[3:].strip()
+    # 예문 / 例文
+    if msg.startswith("예문 ") or msg.startswith("例文 "):
+        rest = re.sub(r"^(예문|例文)\s+", "", msg)
         ko, ja = (s.strip() for s in rest.split("|", 1)) if "|" in rest else (rest, rest)
         return build.example_card(ko, ja, fetch_example(ja))
 
     # 단어 데이터 미로드
     if not lexicon.JLPT_WORDS:
-        return [build.text("단어 데이터가 로드되지 않았습니다.")]
+        return build.no_data()
 
-    # 단어 생성
-    if "단어" in msg or "単語" in msg:
+    # 단어 / 単語
+    if "단어" in msg or "単語" in msg or "たんご" in msg:
         count = parse_request_count(msg)
-        level = parse_level(msg)
+        level = _parse_level_ja(msg)
         pairs = pick_random_words(count, level)
         return build.word_list(pairs, level, count)
 
-    # 퀴즈 문제
-    if msg in ("퀴즈", "다음 문제", "クイズ", "次の問題") \
-            or re.match(r"^(초급|중급|고급) 퀴즈$", msg):
-        level = parse_level(msg)
+    # 퀴즈 / クイズ
+    if msg in ("퀴즈", "クイズ", "다음 문제", "次の問題") \
+            or re.match(r"^(초급|중급|고급) 퀴즈$", msg) \
+            or re.match(r"^(初級|中級|上級)クイズ$", msg):
+        level = _parse_level_ja(msg)
         quiz  = generate_quiz(level)
         if not quiz:
-            return [build.text("단어 데이터가 없습니다.")]
+            return build.no_data()
         return build.quiz_question(quiz)
 
-    # 내 점수
-    if msg in ("내 점수", "점수", "スコア"):
+    # 내 점수 / スコア
+    if msg in ("내 점수", "점수", "スコア", "得点", "スコアを見る"):
         stats = get_user_stats(uid)
         return [build.text(format_stats(stats))]
 
-    # 퀴즈 정답 처리
+    # 퀴즈 정답 처리 (내부 포맷, 버튼에서 자동 전송)
     if msg.startswith("퀴즈답 "):
         parts = msg[4:].strip().split("|")
         if len(parts) == 3:
@@ -114,4 +111,17 @@ def _handle(msg: str, uid: str) -> list[dict]:
             return build.quiz_result(is_correct, ko, correct_ja)
 
     # 기본 에코
-    return [build.text(f"당신이 보낸 메시지: {msg}")]
+    return build.echo(msg)
+
+
+def _parse_level_ja(msg: str) -> str | None:
+    """일본어 + 한국어 레벨 키워드 파싱"""
+    level_map = {
+        "초급": "초급", "쉬운": "초급", "初級": "초급",
+        "중급": "중급", "보통": "중급", "中級": "중급",
+        "고급": "고급", "어려운": "고급", "上級": "고급",
+    }
+    for key, lv in level_map.items():
+        if key in msg:
+            return lv
+    return None
