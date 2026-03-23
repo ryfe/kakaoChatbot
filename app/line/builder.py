@@ -91,10 +91,42 @@ def word_list(pairs: list, level: str | None, count: int) -> list[dict]:
 def example_card(ko_word: str, ja_word: str, example: dict | None) -> list[dict]:
     if not example:
         return [text(f"「{ja_word}」の例文が見つかりませんでした。")]
-    body = f"例文: {ko_word} — {ja_word}\n\n{example['ja_sent']}\n{example['ko_sent']}"
+    roman = romanize(ko_word)
+    contents = [
+        {"type": "box", "layout": "horizontal", "contents": [
+            {"type": "text", "text": ko_word, "weight": "bold", "size": "lg", "color": "#333333", "flex": 3},
+            {"type": "text", "text": ja_word, "size": "md", "color": "#666666", "flex": 2, "align": "end", "gravity": "center"},
+        ]},
+        {"type": "text", "text": roman, "size": "xs", "color": "#999999", "margin": "xs"},
+        {"type": "separator", "margin": "md"},
+        {"type": "text", "text": example["ko_sent"], "size": "md", "color": "#333333", "margin": "md", "wrap": True},
+        {"type": "text", "text": example["ja_sent"], "size": "sm", "color": "#666666", "margin": "sm", "wrap": True},
+    ]
     if example.get("url"):
-        body += f"\n\n🔗 {example['url']}"
-    return [text(body)]
+        contents.append({
+            "type": "text", "text": "Tatoeba で見る →", "size": "xs",
+            "color": "#0078D7", "margin": "md",
+            "action": {"type": "uri", "uri": example["url"]}
+        })
+    flex_msg = {
+        "type": "flex",
+        "altText": f"「{ko_word}」の例文",
+        "contents": {
+            "type": "bubble",
+            "header": {
+                "type": "box", "layout": "vertical",
+                "backgroundColor": "#FFE500",
+                "contents": [{"type": "text", "text": "💬 例文", "weight": "bold", "size": "lg", "color": "#333333"}]
+            },
+            "body": {"type": "box", "layout": "vertical", "spacing": "sm", "contents": contents}
+        },
+        "quickReply": {"items": [
+            _qr("もう一度", f"예문 {ko_word}|{ja_word}"),
+            _qr("クイズ", "퀴즈"),
+            _qr("単語を見る", "한국어 단어 5개"),
+        ]}
+    }
+    return [flex_msg]
 
 
 # ── 퀴즈 ────────────────────────────────────────────────────
