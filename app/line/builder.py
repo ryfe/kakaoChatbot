@@ -101,20 +101,77 @@ def example_card(ko_word: str, ja_word: str, example: dict | None) -> list[dict]
 
 def quiz_question(quiz: dict) -> list[dict]:
     ko, correct_ja, options = quiz["ko"], quiz["correct_ja"], quiz["options"]
-    return [text_with_replies(
-        f"「{ko}」の日本語は？",
-        [(ja, f"퀴즈답 {ko}|{correct_ja}|{ja}") for ja in options]
-    )]
+    roman = romanize(ko)
+    flex_msg = {
+        "type": "flex",
+        "altText": f"「{ko}」の日本語は？",
+        "contents": {
+            "type": "bubble",
+            "header": {
+                "type": "box",
+                "layout": "vertical",
+                "backgroundColor": "#FFE500",
+                "contents": [{"type": "text", "text": "🧠 クイズ", "weight": "bold", "size": "lg", "color": "#333333"}]
+            },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "sm",
+                "contents": [
+                    {"type": "text", "text": ko, "size": "xxl", "weight": "bold", "align": "center", "color": "#333333"},
+                    {"type": "text", "text": roman, "size": "sm", "align": "center", "color": "#999999"},
+                    {"type": "separator", "margin": "md"},
+                    {"type": "text", "text": "日本語はどれ？", "size": "sm", "color": "#666666", "margin": "md", "align": "center"},
+                ]
+            }
+        },
+        "quickReply": {
+            "items": [_qr(ja, f"퀴즈답 {ko}|{correct_ja}|{ja}") for ja in options]
+        }
+    }
+    return [flex_msg]
 
 
 def quiz_result(is_correct: bool, ko: str, correct_ja: str) -> list[dict]:
-    msg = f"✅ 正解！\n「{ko}」= {correct_ja}" if is_correct \
-        else f"❌ 不正解\n「{ko}」の日本語は {correct_ja}"
-    return [text_with_replies(msg, [
-        ("次の問題", "퀴즈"),
-        ("スコア",   "내 점수"),
-        ("単語を見る", "한국어 단어 5개"),
-    ])]
+    roman = romanize(ko)
+    color = "#00B900" if is_correct else "#E53935"
+    header_color = "#E8F5E9" if is_correct else "#FFEBEE"
+    icon = "✅ 正解！" if is_correct else "❌ 不正解"
+    flex_msg = {
+        "type": "flex",
+        "altText": icon,
+        "contents": {
+            "type": "bubble",
+            "header": {
+                "type": "box",
+                "layout": "vertical",
+                "backgroundColor": header_color,
+                "contents": [{"type": "text", "text": icon, "weight": "bold", "size": "lg", "color": color}]
+            },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "sm",
+                "contents": [
+                    {"type": "text", "text": ko, "size": "xxl", "weight": "bold", "align": "center", "color": "#333333"},
+                    {"type": "text", "text": roman, "size": "sm", "align": "center", "color": "#999999"},
+                    {"type": "separator", "margin": "md"},
+                    {"type": "box", "layout": "horizontal", "margin": "md", "contents": [
+                        {"type": "text", "text": "正解", "size": "sm", "color": "#999999", "flex": 1},
+                        {"type": "text", "text": correct_ja, "size": "md", "weight": "bold", "color": color, "flex": 2, "align": "end"},
+                    ]}
+                ]
+            }
+        },
+        "quickReply": {
+            "items": [
+                _qr("次の問題", "퀴즈"),
+                _qr("スコア",   "내 점수"),
+                _qr("単語を見る", "한국어 단어 5개"),
+            ]
+        }
+    }
+    return [flex_msg]
 
 
 # ── 점수 ────────────────────────────────────────────────────
@@ -122,13 +179,51 @@ def quiz_result(is_correct: bool, ko: str, correct_ja: str) -> list[dict]:
 def format_stats(stats_dict: dict) -> list[dict]:
     if not stats_dict or stats_dict.get("total", 0) == 0:
         return [text("まだクイズの記録がありません。\n「クイズ」と送って始めてみましょう！")]
-    rate = int(stats_dict["correct"] / stats_dict["total"] * 100)
-    msg = (
-        f"📊 クイズ成績\n"
-        f"正解: {stats_dict['correct']} / {stats_dict['total']}問\n"
-        f"正答率: {rate}%"
-    )
-    return [text(msg)]
+    total   = stats_dict["total"]
+    correct = stats_dict["correct"]
+    wrong   = total - correct
+    rate    = int(correct / total * 100)
+    flex_msg = {
+        "type": "flex",
+        "altText": f"クイズ成績 {rate}%",
+        "contents": {
+            "type": "bubble",
+            "header": {
+                "type": "box",
+                "layout": "vertical",
+                "backgroundColor": "#FFE500",
+                "contents": [{"type": "text", "text": "📊 クイズ成績", "weight": "bold", "size": "lg", "color": "#333333"}]
+            },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "md",
+                "contents": [
+                    {"type": "text", "text": f"{rate}%", "size": "5xl", "weight": "bold", "align": "center", "color": "#333333"},
+                    {"type": "separator"},
+                    {"type": "box", "layout": "horizontal", "contents": [
+                        {"type": "text", "text": "正解", "color": "#00B900", "flex": 1},
+                        {"type": "text", "text": str(correct), "weight": "bold", "flex": 1, "align": "end"},
+                    ]},
+                    {"type": "box", "layout": "horizontal", "contents": [
+                        {"type": "text", "text": "不正解", "color": "#E53935", "flex": 1},
+                        {"type": "text", "text": str(wrong), "weight": "bold", "flex": 1, "align": "end"},
+                    ]},
+                    {"type": "box", "layout": "horizontal", "contents": [
+                        {"type": "text", "text": "合計", "color": "#666666", "flex": 1},
+                        {"type": "text", "text": f"{total}問", "weight": "bold", "flex": 1, "align": "end"},
+                    ]},
+                ]
+            }
+        },
+        "quickReply": {
+            "items": [
+                _qr("クイズ", "퀴즈"),
+                _qr("単語を見る", "한국어 단어 5개"),
+            ]
+        }
+    }
+    return [flex_msg]
 
 
 # ── 에러 / 기타 ─────────────────────────────────────────────
