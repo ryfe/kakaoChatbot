@@ -19,8 +19,11 @@ def load_jlpt_words(path: str) -> List[Tuple[str, str, str]]:
     words = []
     for item in data["JLPT단어"]:
         if isinstance(item, (list, tuple)) and len(item) >= 2:
-            ko, ja = str(item[0]), str(item[1])
+            ko, ja = str(item[0]).strip(), str(item[1]).strip()
             lv = str(item[2]) if len(item) >= 3 else "JLPT"
+            # 설명/구문이 섞인 항목 제거 (마침표, 화살표 포함)
+            if "." in ko or "→" in ko or len(ko) > 15:
+                continue
             words.append((ko, ja, lv))
     if not words:
         raise ValueError("'JLPT단어'에 유효한 항목이 없습니다.")

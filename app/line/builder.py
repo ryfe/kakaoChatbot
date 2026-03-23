@@ -30,17 +30,20 @@ def pronunciation(ko: str, ja: str) -> dict:
     return text(f"{ko}\n[{roman}]\n{ja}")
 
 
-def word_list(pairs: list, level: str | None, count: int) -> list[dict]:
-    lines = [f"{ko} [{romanize(ko)}] — {ja}" for ko, ja, *_ in pairs]
-    body  = "\n".join(f"{i+1}. {l}" for i, l in enumerate(lines))
+_NUMS = "①②③④⑤⑥⑦⑧⑨⑩"
 
-    level_ja = {"초급": "初級", "중급": "中級", "고급": "上級"}.get(level, "")
+def word_list(pairs: list, level: str | None, count: int) -> list[dict]:
+    level_ja = {"초급": "初級", "중급": "中級", "고급": "上級"}.get(level or "", "")
+    header = f"📚 韓国語単語{' (' + level_ja + ')' if level_ja else ''}\n"
+    lines = [f"{_NUMS[i]} {ko}  →  {ja}" for i, (ko, ja, *_) in enumerate(pairs)]
+    body = header + "\n".join(lines)
+
     level_label = f"{level} " if level else ""
     return [text_with_replies(body, [
-        ("もう一度",   f"{level_label}단어 {count}개"),
-        ("初級",      f"초급 단어 {count}개"),
-        ("中級",      f"중급 단어 {count}개"),
-        ("上級",      f"고급 단어 {count}개"),
+        ("もう一度", f"{level_label}단어 {count}개"),
+        ("初級",    f"초급 단어 {count}개"),
+        ("中級",    f"중급 단어 {count}개"),
+        ("上級",    f"고급 단어 {count}개"),
     ])]
 
 
