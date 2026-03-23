@@ -9,7 +9,7 @@ from ..lexicon import parse_request_count, pick_random_words
 from ..examples import fetch_example
 from ..db import save_quiz_result, get_user_stats
 from ..core.vocab import parse_level
-from ..core.quiz import generate_quiz, check_answer, format_stats
+from ..core.quiz import generate_quiz, check_answer
 from . import builder as build
 
 bp = Blueprint("line", __name__)
@@ -98,8 +98,7 @@ def _handle(msg: str, uid: str) -> list[dict]:
 
     # 내 점수 / スコア
     if msg in ("내 점수", "점수", "スコア", "得点", "スコアを見る"):
-        stats = get_user_stats(uid)
-        return [build.text(format_stats(stats))]
+        return build.format_stats(get_user_stats(uid))
 
     # 퀴즈 정답 처리 (내부 포맷, 버튼에서 자동 전송)
     if msg.startswith("퀴즈답 "):

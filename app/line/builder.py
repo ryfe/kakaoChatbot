@@ -75,6 +75,20 @@ def quiz_result(is_correct: bool, ko: str, correct_ja: str) -> list[dict]:
     ])]
 
 
+# ── 점수 ────────────────────────────────────────────────────
+
+def format_stats(stats_dict: dict) -> list[dict]:
+    if not stats_dict or stats_dict.get("total", 0) == 0:
+        return [text("まだクイズの記録がありません。\n「クイズ」と送って始めてみましょう！")]
+    rate = int(stats_dict["correct"] / stats_dict["total"] * 100)
+    msg = (
+        f"📊 クイズ成績\n"
+        f"正解: {stats_dict['correct']} / {stats_dict['total']}問\n"
+        f"正答率: {rate}%"
+    )
+    return [text(msg)]
+
+
 # ── 에러 / 기타 ─────────────────────────────────────────────
 
 def no_data() -> list[dict]:
@@ -83,7 +97,3 @@ def no_data() -> list[dict]:
 
 def echo(msg: str) -> list[dict]:
     return [text(f"受信したメッセージ: {msg}")]
-
-
-def stats(text_msg: str) -> list[dict]:
-    return [text(text_msg)]
