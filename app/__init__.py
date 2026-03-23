@@ -13,6 +13,9 @@ def create_app() -> Flask:
     from .kakao import bp as kakao_bp
     app.register_blueprint(kakao_bp)
 
+    from .line import bp as line_bp
+    app.register_blueprint(line_bp)
+
     from .lexicon import try_load_into_cache
     try_load_into_cache(app)
 
