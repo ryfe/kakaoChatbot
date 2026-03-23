@@ -43,6 +43,7 @@ def word_list(pairs: list, level: str | None, count: int) -> list[dict]:
             "type": "box",
             "layout": "horizontal",
             "margin": "sm",
+            "action": {"type": "message", "text": f"예문 {ko}|{ja}"},
             "contents": [
                 {
                     "type": "box",
@@ -54,6 +55,7 @@ def word_list(pairs: list, level: str | None, count: int) -> list[dict]:
                     ]
                 },
                 {"type": "text", "text": ja, "flex": 2, "size": "md", "color": "#666666", "align": "end", "gravity": "center"},
+                {"type": "text", "text": "›", "size": "lg", "color": "#CCCCCC", "gravity": "center", "flex": 0},
             ]
         })
 
@@ -198,8 +200,8 @@ def quiz_result(is_correct: bool, ko: str, correct_ja: str) -> list[dict]:
         "quickReply": {
             "items": [
                 _qr("次の問題", "퀴즈"),
+                _qr("例文を見る", f"예문 {ko}|{correct_ja}"),
                 _qr("スコア",   "내 점수"),
-                _qr("単語を見る", "한국어 단어 5개"),
             ]
         }
     }
