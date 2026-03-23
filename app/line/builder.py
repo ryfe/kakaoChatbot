@@ -30,21 +30,51 @@ def pronunciation(ko: str, ja: str) -> dict:
     return text(f"{ko}\n[{roman}]\n{ja}")
 
 
-_NUMS = "①②③④⑤⑥⑦⑧⑨⑩"
-
 def word_list(pairs: list, level: str | None, count: int) -> list[dict]:
     level_ja = {"초급": "初級", "중급": "中級", "고급": "上級"}.get(level or "", "")
-    header = f"📚 韓国語単語{' (' + level_ja + ')' if level_ja else ''}\n"
-    lines = [f"{_NUMS[i]} {ko}  →  {ja}" for i, (ko, ja, *_) in enumerate(pairs)]
-    body = header + "\n".join(lines)
+    title = f"📚 韓国語単語" + (f"  {level_ja}" if level_ja else "")
 
-    level_label = f"{level} " if level else ""
-    return [text_with_replies(body, [
-        ("もう一度", f"{level_label}단어 {count}개"),
-        ("初級",    f"초급 단어 {count}개"),
-        ("中級",    f"중급 단어 {count}개"),
-        ("上級",    f"고급 단어 {count}개"),
-    ])]
+    rows = []
+    for i, (ko, ja, *_) in enumerate(pairs):
+        if i > 0:
+            rows.append({"type": "separator", "margin": "sm"})
+        rows.append({
+            "type": "box",
+            "layout": "horizontal",
+            "margin": "sm",
+            "contents": [
+                {"type": "text", "text": ko, "flex": 3, "size": "md", "color": "#333333", "weight": "bold"},
+                {"type": "text", "text": ja, "flex": 2, "size": "md", "color": "#666666", "align": "end"},
+            ]
+        })
+
+    flex_msg = {
+        "type": "flex",
+        "altText": title,
+        "contents": {
+            "type": "bubble",
+            "header": {
+                "type": "box",
+                "layout": "vertical",
+                "backgroundColor": "#FFE500",
+                "contents": [{"type": "text", "text": title, "weight": "bold", "size": "lg", "color": "#333333"}]
+            },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": rows,
+            }
+        },
+        "quickReply": {
+            "items": [
+                _qr("もう一度", f"{level + ' ' if level else ''}단어 {count}개"),
+                _qr("初級", f"초급 단어 {count}개"),
+                _qr("中級", f"중급 단어 {count}개"),
+                _qr("上級", f"고급 단어 {count}개"),
+            ]
+        }
+    }
+    return [flex_msg]
 
 
 # ── 예문 ────────────────────────────────────────────────────
